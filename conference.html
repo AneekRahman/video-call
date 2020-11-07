@@ -1,0 +1,310 @@
+<!--
+
+    /*
+
+    COPYRIGHT Aneek Rahman, 2018. ALL RIGHTS RESERVED. THE BELOW WRITTEN CODE IS NOT FOR COPY, REUSE, MODIFICATION,
+    OR ANY KIND OF ADAPTATION. ANY KIND OF USE OF THIS CODE FOR PERSONAL, ORGANIZATIONAL, SPECIALLY BUSINESS PURPOSES IS PROHIBITED.
+    IF YOU USE, ADAPT, REUSE, MODIFY AND USE, COPY THIS CODE IT WILL BE PLAGARISM AND THE OWNER HAS THE RIGHT TO PUSH
+    CHARGES AND TAKE ACTION. PLEASE REPORT ANY KIND OF PLAGARISM OF THIS CODE IF IT COMES TO YOUR KNOWLEDGE. THANK YOU.
+
+    */
+
+-->
+
+
+<!DOCTYPE html>
+<html>
+
+    <head>
+    
+        <title>Video Call - v1 Aneek's Proj</title>
+        <link href='conferenStyle.css' type="text/css" rel="stylesheet">
+  
+        <link href="https://fonts.googleapis.com/css?family=Open+Sans:300,400|Raleway:300,400,700" rel="stylesheet">
+        
+        <link rel="stylesheet" href="//cdn.materialdesignicons.com/2.2.43/css/materialdesignicons.min.css">
+    
+    </head>
+    
+    <body>
+
+        
+        
+        <div id="topPanel">
+        
+            <h4>User ID: <b id="userID"></b></h4>
+            
+            <button id="login">Login</button>
+            
+            <button id="call">Call Group</button>
+        
+        </div>
+        
+        
+        <div id="topDiv">
+        
+            <video id="userVideo" ></video>
+            
+            
+            <div id="rightVids">
+            
+                <div class="video"><video id="peerVideo"></video></div>
+                
+                <div class="video"><video></video></div>
+            
+            </div>
+        
+        </div>
+        
+        <div id="bottomVids">
+        
+            <video ></video>
+            
+            <video ></video>
+            
+            <video ></video>
+            
+        
+        </div>
+        
+        <div id="copyR">
+            <span>&copy; Copyright Aneek Rahman, 2018. All rights reserved.</span>
+        </div>
+        
+        <script
+  src="https://code.jquery.com/jquery-3.3.1.min.js"
+  integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+  crossorigin="anonymous"></script>
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/0.3.14/peer.min.js"></script>
+
+        <script src="/socket.io/socket.io.js"></script>
+
+        <script src="/28c9cwa8n.js"></script>
+        
+        <script>
+            
+            $("#login").click(function(){
+                                
+                location.reload()
+                
+            })
+
+            var socket = io();
+
+            navigator.getUserMedia = navigator.getUserMedia ||
+                         navigator.webkitGetUserMedia ||
+                         navigator.mozGetUserMedia;
+
+            var uname = null;
+
+            var userID = null;
+
+            var peer = null;
+
+            function login(){
+
+                var username = prompt("Enter username:");
+
+                var password = prompt("Enter password for [" + username + "]:");
+
+                var ok = 0;
+
+                if(userList[username] == password){
+
+                    ok = 1;
+
+                }
+
+
+                if(ok == 1){
+
+                    alert("Welcome, " + username + ". Logged In!");
+
+                    socket.emit("uid", username);
+
+                    uname = username;
+                    
+                    $("#login").hide();
+
+                }else{
+
+                    alert("Incorrect username or password. Logging in as a Guest");
+
+                }
+
+            }
+
+            if(location.hash != "#member"){
+
+                login();
+
+                var peer = new Peer( uname, {
+
+                    host: location.hostname,
+                    port: location.port || (location.protocol === 'https:' ? 443 : 80),
+                    path: '/peerjs'
+
+                })
+
+            }else{
+
+                var peer = new Peer({
+
+                    host: location.hostname,
+                    port: location.port || (location.protocol === 'https:' ? 443 : 80),
+                    path: '/peerjs'
+
+                })
+
+            }
+
+            var userVideo = document.querySelector("#userVideo");
+                    
+                navigator.getUserMedia({video: true}, function(stream){
+    
+                    window.localStream = stream;
+                    
+                    userVideo.src = window.URL.createObjectURL(stream);
+    
+                    userVideo.play();
+                    
+                    }, function(err){
+    
+                    if(err) throw err;
+    
+            })
+
+
+
+            
+            peer.on("open", function(id){
+
+                $("#userID").text(id);
+
+            })
+
+
+            var peerCountCall = 1;
+
+            var peerVideo = document.querySelectorAll("video")
+
+            // WHEN A CALL ARRIVES FROM SOMEONE ELSE
+
+            peer.on('call', function(call){
+
+                call.answer(window.localStream);
+
+                call.on('stream', function(stream){
+
+                    peerVideo[peerCountCall].src = window.URL.createObjectURL(stream);
+
+                    peerCountCall++;
+
+                });
+
+            });
+
+            // WHEN A CALL ARRIVES FROM SOMEONE ELSE
+
+            // WHEN USER CALLS SOMEONE
+
+            var countUserCall = 0;
+
+            var userCallLimit = 3;
+
+            mUserList = null;
+
+            $("#call").click(function(){
+
+                socket.emit("getUList");
+
+            })
+
+            function call1(){
+
+                if(countUserCall < userCallLimit){
+
+                    var call = peer.call(mUserList[countUserCall], window.localStream);
+
+                    call.on('stream', function(stream){
+
+                        peerVideo[countUserCall + 1].src = window.URL.createObjectURL(stream);
+
+                        countUserCall++;
+
+                        call2();
+            
+                    })
+
+                }
+
+            }
+            
+
+
+            function call2(){
+
+                if(countUserCall < userCallLimit){
+
+                    var call = peer.call(mUserList[countUserCall], window.localStream);
+
+                    call.on('stream', function(stream){
+
+                        peerVideo[countUserCall + 1].src = window.URL.createObjectURL(stream);
+
+                        countUserCall++;
+
+                        call1();
+
+                    })
+
+                }
+
+            }
+
+            // SOCKECT SENDING MSGS
+
+            socket.on("reload", function(json){
+
+                var userList = JSON.parse(json);
+
+                userList.clean(uname);
+
+                mUserList = userList;
+
+                userCallLimit = userList.length;
+
+                call1();
+
+            })
+
+            // SOCKET SENDING MSGS
+            
+            
+            // UI SHITS
+            
+            
+            Array.prototype.clean = function(deleteValue) {
+                for (var i = 0; i < this.length; i++) {
+                    if (this[i] == deleteValue) {         
+                    this.splice(i, 1);
+                    i--;
+                    }
+                }
+                return this;
+                };
+
+                test = new Array("", "One", "Two", "", "Three", "", "Four").clean("");
+                test2 = [1, 2,, 3,, 3,,,,,, 4,, 4,, 5,, 6,,,,];
+                test2.clean(undefined);
+            
+        
+        
+        </script>
+        
+    </body>
+    
+</html>
+
+
